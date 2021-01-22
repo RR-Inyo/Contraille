@@ -1,0 +1,361 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Mathematical functions
+** contraille-math.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Absolute value
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt absolute y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=abs(V(u))
+.ends
+
+** -----------------------------------------------
+** Addition, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt add2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)+V(u2)
+.ends
+
+** -----------------------------------------------
+** Addition, 3 inputs
+** Nodes: y:output, u1-u3:inputs
+** -----------------------------------------------
+.subckt add3 y u1 u2 u3
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)+V(u2)+V(u3)
+.ends
+
+** -----------------------------------------------
+** Addition, 4 inputs
+** Nodes: y:output, u1-u4:inputs
+** -----------------------------------------------
+.subckt add4 y u1 u2 u3 u4
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+R4 u4 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)+V(u2)+V(u3)+V(u4)
+.ends
+
+** -----------------------------------------------
+** Addition, 5 inputs
+** Nodes: y:output, u1-u5: inputs
+** -----------------------------------------------
+.subckt add5 y u1 u2 u3 u4 u5
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+R4 u4 0 100Meg ; Dummy 100-megohm resistor
+R5 u5 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)+V(u2)+V(u3)+V(u4)+V(u5)
+.ends
+
+** -----------------------------------------------
+** Addition, 6 inputs
+** Nodes: y:output, u1-u6:inputs
+** -----------------------------------------------
+.subckt add6 y u1 u2 u3 u4 u5 u6
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+R4 u4 0 100Meg ; Dummy 100-megohm resistor
+R5 u5 0 100Meg ; Dummy 100-megohm resistor
+R5 u6 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)+V(u2)+V(u3)+V(u4)+V(u5)+V(u6)
+.ends
+
+** -----------------------------------------------
+** Subtraction
+** Nodes: y:output, u1, u2:inputs
+** -----------------------------------------------
+.subckt subtract y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)-V(u2)
+.ends
+
+** -----------------------------------------------
+** Multiplication
+** Nodes: y:output, u1, u2:inputs
+** -----------------------------------------------
+.subckt multiply y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)*V(u2)
+.ends
+
+** -----------------------------------------------
+** Negation
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt negate y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=-V(u)
+.ends
+
+** -----------------------------------------------
+** Division
+** Nodes: y:output, u1:numerator, u2:denominator
+** -----------------------------------------------
+.subckt divide y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)/V(u2)
+.ends
+
+** -----------------------------------------------
+** Reciprocal
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt reciprocal y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=1/V(u)
+.ends
+
+** -----------------------------------------------
+** Square
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt square y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u)*2
+.ends
+
+** -----------------------------------------------
+** Square root
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt sqrt y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=sqrt(V(u))
+.ends
+
+** -----------------------------------------------
+** Hypotenuse
+** Nodes: z:output, x, y:input
+** -----------------------------------------------
+.subckt hypotenuse z x y
+R1 x 0 100Meg ; Dummy 100-megohm resistor
+R2 y 0 100Meg ; Dummy 100-megohm resistor
+B1 z 0 V=hypot(V(x),V(y))
+.ends
+
+** -----------------------------------------------
+** Power
+** Nodes: y:output, u1, u2:inputs
+** -----------------------------------------------
+.subckt power y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)**V(u2)
+.ends
+
+** -----------------------------------------------
+** Exponential
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt exp y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=exp(V(u))
+.ends
+
+** -----------------------------------------------
+** Power of 10
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt pow10 y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=10**V(u)
+.ends
+
+** -----------------------------------------------
+** Natural logarithm
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt ln y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=ln(V(u))
+.ends
+
+** -----------------------------------------------
+** Logarithm of 10
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt log10 y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=log10(V(u))
+.ends log10
+
+** -----------------------------------------------
+** Sine
+** Nodes: y:output, theta:angle input
+** -----------------------------------------------
+.subckt sin y theta
+R1 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=sin(V(theta))
+.ends
+
+** -----------------------------------------------
+** Cosine
+** Nodes: x:output, theta:angle input
+** -----------------------------------------------
+.subckt cos x theta
+R1 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 x 0 V=cos(V(theta))
+.ends
+
+** -----------------------------------------------
+** Tangent
+** Nodes: r:output, theta:angle input
+** -----------------------------------------------
+.subckt tan r theta
+R1 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 r 0 V=tan(V(theta))
+.ends
+
+** -----------------------------------------------
+** Arcsine
+** Nodes: theta:output, y:input
+** -----------------------------------------------
+.subckt asin theta y
+R1 y 0 100Meg ; Dummy 100-megohm resistor
+B1 theta 0 V=asin(V(y))
+.ends
+
+** -----------------------------------------------
+** Arccosine
+** Nodes: theta:output, x:input
+** -----------------------------------------------
+.subckt acos theta x
+R1 x 0 100Meg ; Dummy 100-megohm resistor
+B1 theta 0 V=acos(V(x))
+.ends
+
+** -----------------------------------------------
+** Arctangent, 1-input
+** Angle: theta:output, r:input
+** -----------------------------------------------
+.subckt atan theta r
+R1 r 0 100Meg ; Dummy 100-megohm resistor
+B1 theta 0 V=atan(V(r))
+.ends
+
+** -----------------------------------------------
+** Arctangent, 2-input
+** Angle: theta:output, x, y:inputs
+** -----------------------------------------------
+.subckt atan2 theta x y
+R1 x 0 100Meg ; Dummy 100-megohm resistor
+R2 y 0 100Meg ; Dummy 100-megohm resistor
+B1 theta 0 V=atan2(V(y),V(x))
+.ends
+
+** -----------------------------------------------
+** Degree to radian
+** Nodes: theta_out:radian output, theta_in:degree input
+** -----------------------------------------------
+.subckt deg-to-rad theta_out theta_in
+R1 theta_in 0 100Meg ; Dummy 100-megohm resistor
+B1 theta_out 0 V=pi/180*V(theta_in)
+.end
+
+** -----------------------------------------------
+** Radian to degree
+** Nodes: theta_out: degree output, theta_in:radian input
+** -----------------------------------------------
+.subckt rad-to-deg theta_out theta_in
+R1 theta_in 0 100Meg ; Dummy 100-megohm resistor
+B1 theta_out 0 V=180/pi*V(theta_in)
+.end
+
+** -----------------------------------------------
+** Angle wrap
+** Nodes: theta_out:output, theta_in:input
+** Param: R:range (2*pi for radians, 360 for degrees)
+** -----------------------------------------------
+.subckt angle-wrap theta_out theta_in
+R1 theta_in 0 100Meg ; Dummy 100-megohm resistor
+B1 theta_out 0 V=if(V(theta_in)>{R/2},V(theta_in)-{R},if(V(theta_in)<{-R/2},V(theta_in)+{R},V(theta_in)))
+.param R={2*pi}
+.ends angle-wrap
+
+** -----------------------------------------------
+** Maximum and minimum, 2 inputs
+** Nodes: max, min: outputs, u1, u2:inputs
+** -----------------------------------------------
+.subckt max-min max min u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 max 0 V=max(V(u1), V(u2))
+B2 min 0 V=min(V(u2), V(u2))
+.ends
+
+** -----------------------------------------------
+** Maximum, medium, and minimum, 3 inputs
+** Nodes: max, med, min:outputs, u1, u2, u3:inputs
+** -----------------------------------------------
+.subckt max-med-min max med min u1 u2 u3
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+B1 max 0 V=max(V(u1), max(V(u2), V(u3)))
+B2 med 0 V=limit(V(u1), V(u2), V(u3))
+B3 min 0 V=min(V(u1), min(V(u2), V(u3)))
+.ends
+
+** -----------------------------------------------
+** Intermediate (median) value out of 3 inputs
+** Nodes:  m:outputs, u1, u2, u3:inputs
+** -----------------------------------------------
+.subckt median m u1 u2 u3
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+B1 m 0 V=limit(V(u1), V(u2), V(u3))
+.ends
+
+** -----------------------------------------------
+** Multiplexer, 2 inputs
+** Nodes: y:output, u1, u2:inputs, s:selector
+** -----------------------------------------------
+.subckt mux2 y u1 u2 s
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=if(buf(V(s)),V(u2),V(u1))
+.end
+
+** -----------------------------------------------
+** Multiplexer, 3 inputs
+** Nodes: y:output, u1-u3:inputs, s:selector
+** -----------------------------------------------
+.subckt mux3 y u1 u2 u3 s
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R2 u3 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=if(V(s)<=0.5,V(u1),if(V(s)>0.5&V(s)<=1.5,V(u2),V(u3)))
+.end
+
+** -----------------------------------------------
+** Multiplexer, 4 inputs
+** Nodes: y:output, u1-u4:inputs, s: selector
+** -----------------------------------------------
+.subckt mux4 y u1 u2 u3 u4 s
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+R3 u3 0 100Meg ; Dummy 100-megohm resistor
+R4 u4 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=if(V(s)<=0.5,V(u1),if(V(s)>0.5&V(s)<=1.5,V(u2),if(V(s)>1.5&V(s)<=2.5,V(u3),V(u4))))
+.end

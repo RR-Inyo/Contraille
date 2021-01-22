@@ -1,0 +1,249 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Continuous functions
+** contraille-continuous.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Proportional gain
+** Nodes: y:output, u:input
+** Param: K:gain
+** -----------------------------------------------
+.subckt proportional y u
+E1 y 0 u 0 {K}
+.param K=2
+.ends
+
+** -----------------------------------------------
+** Integral gain
+** Nodes: y:output, u:input
+** Param: T:time constant, I:initial value
+** -----------------------------------------------
+.subckt integral y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=idt(V(u)/{T},{I})
+.param T=1,I=0
+.ends
+
+** -----------------------------------------------
+** Integral gain, reset on reaching modulus m
+** Nodes: y:output, u:input
+** Param: T:time constant, M:modulus
+** -----------------------------------------------
+.subckt integral-mod y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=idtmod(V(u)/{T},{I},{M})
+.param T=1 I=0 M=2*pi
+.ends
+
+** -----------------------------------------------
+** Integral gain, limiters, hold, reset to a value
+** Nodes: y:output, h:hold, u:input, r:reset, i:initial value
+** Param: T:time constant, LU:upper limit, LL:lower limit
+** -----------------------------------------------
+.subckt integral-limiter-hold-reset y u h r i
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 h 0 100Meg ; Dummy 100-megohm resistor
+R3 i 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=idt(if(buf(V(h)),0,V(u)/{T}),if(V(y)>={LU}&!(V(r)),{LU},if(V(y)<={LL}&!(V(r)),{LL},V(i))),(V(y)>={LU}&V(u)>0)|(V(y)<={LL}&V(u)<0)|buf(V(r)))
+.param T=1 LU=10 LL=-10
+.end
+
+** -----------------------------------------------
+** Dervative gain
+** Nodes: y:output, u:input
+** Param: T:time constant
+** -----------------------------------------------
+.subckt derivative y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=ddt(V(u)*{T})
+.param T=1
+.ends
+
+** -----------------------------------------------
+** First-order LPF, time-constant
+** Nodes: y:output, u:input
+** Param: T:time constant
+** -----------------------------------------------
+.subckt first-order-lpf-time y u
+E1 y 0 u 0 laplace=1/(1+s*{T})
+.param T=1
+.ends
+
+** -----------------------------------------------
+** First-order LPF, omega_n
+** Node: y:output, u:input
+** Param: omega_n:cut-off angular frequency
+** -----------------------------------------------
+.subckt first-order-lpf-omega_n y u
+E1 y 0 u 0 laplace={omega_n}/(s+{omega_n})
+.param omega_n=1
+.ends
+
+** -----------------------------------------------
+** First-order HPF, time-constant
+** Nodes: y:output, u:input
+** Param: T:time constant
+** -----------------------------------------------
+.subckt first-order-hpf-time y u
+E1 m 0 u 0 laplace=1/(1+s*{T})
+B1 y 0 V=V(u)-V(m)
+.param T=1
+.ends
+
+** -----------------------------------------------
+** First-order HPF, omega_n
+** Nodes: y:output, u:input
+** Param: omega_n:cut-off angular frequency
+** -----------------------------------------------
+.subckt first-order-hpf-omega_n y u
+E1 m 0 u 0 laplace={omega_n}/(s+{omega_n})
+B1 y 0 V=V(u)-V(m)
+.param omega_n=1
+.ends
+
+** -----------------------------------------------
+** Second-order LPF or second-order delay
+** Nodes: y:output, u:input
+** Param: omega_n:natural angular frequency, zeta:damping factor
+** -----------------------------------------------
+.subckt second-order-lpf y u
+E1 y 0 u 0 laplace={omega_n**2}/(s^2+2*{zeta*omega_n}*s+{omega_n**2})
+.param omega_n=1 zeta=0.707
+.ends
+
+** -----------------------------------------------
+** Second-order HPF
+** Nodes: y:output, u:input
+** Param: omega_n:natural angular frequency, zeta:damping factor
+** -----------------------------------------------
+.subckt second-order-hpf y u
+E1 m 0 u 0 laplace=(2*{zeta*omega_n}*s+{omega_n**2})/(s^2+2*{zeta*omega_n}*s+{omega_n**2})
+B1 y 0 V=V(u)-V(m)
+.param omega_n=1 zeta=0.707
+.ends
+
+** -----------------------------------------------
+** Second-order BPF
+** Nodes: y:output, u:input
+** Param: omega_n:natural angular frequency, zeta:damping factor
+** -----------------------------------------------
+.subckt second-order-bpf y u
+E1 y 0 u 0 laplace=2*{zeta*omega_n}*s/(s^2+2*{zeta*omega_n}*s+{omega_n**2})
+.param omega_n=1 zeta=0.707
+.ends
+
+** -----------------------------------------------
+** Second-order BEF
+** Nodes: y:output, u:input
+** Param: omega_n:natural angular frequency, zeta:damping factor
+** -----------------------------------------------
+.subckt second-order-bef y u
+E1 m 0 u 0 laplace=2*{zeta*omega_n}*s/(s^2+2*{zeta*omega_n}*s+{omega_n**2})
+B1 y 0 V=V(u)-V(m)
+.param omega_n=1 zeta=0.707
+.ends
+
+** -----------------------------------------------
+** Phase-lag compensation
+** Nodes: y:output, u:input
+** Param: alpha:low-frequency gain, T1:frequency parameter
+** -----------------------------------------------
+.subckt phase-lag y u
+E1 m 0 u 0 laplace=(1-{alpha})/({alpha*T1}*s+1)
+B1 y 0 V=V(u)-V(m)
+.param alpha=10 T1=0.1
+.ends
+
+** -----------------------------------------------
+** Phase-lead compensation
+** Nodes: y:output, u:input
+** Param: beta:high-frequency gain, T2:frequency parameter
+** -----------------------------------------------
+.subckt phase-lead y u
+E1 m 0 u 0 laplace=(1-{beta})/({beta*T2}*s+1)
+B1 y 0 V=(V(u)-V(m))/{beta}
+.param alpha=0.1 T2=1
+.ends
+
+** -----------------------------------------------
+** Arbitrary transfer function
+** Nodes: y:output, u:input
+** Param: b6-b0: coefficients for numerator, a5-a0:coefficients for denominator
+** -----------------------------------------------
+.subckt arbitrary-tf y u
+E1 y 0 u 0 laplace=({b6}*s^6+{b5}*s^5+{b4}*s^4+{b3}*s^3+{b2}*s^2+{b1}*s+{b0})/({a6}*s^6+{a5}*s^5+{a4}*s^4+{a3}*s^3+{a2}*s^2+{a1}*s+{a0})
+.param b6=0 b5=0 b4=0 b3=0 b2=0 b1=0 b0=1 a6=0 a5=0 a4=1 a3=2.6313 a2=3.4143 a1=2.6132 a0=1
+.ends
+
+** -----------------------------------------------
+** Transport delay, continuous
+** Nodes: y:output, u:input
+** Param: T:delay
+** -----------------------------------------------
+.subckt transport-delay y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=delay(V(u),{T})
+.param T=1
+.ends
+
+** -----------------------------------------------
+** Variable transport delay, continuous
+** Nodes: y:output, u:input, T:delay
+** -----------------------------------------------
+.subckt variable-transport-delay y u T
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=delay(V(u),V(T))
+.end
+
+** -----------------------------------------------
+** Moving average filter (MAF), continuous
+** Nodes: y:output, u:input
+** Param: T:time window
+** -----------------------------------------------
+.subckt moving-average y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=idt(V(u)-delay(V(u),{T}),0)/{T}
+.param T=1
+.end
+
+** -----------------------------------------------
+** PI controller
+** Nodes: y:output, u:input, h:hold, r:reset, i:initial value
+** Param: KP:proportional gain, KI:integral gain
+**        LLI, LUI: limiter for internal integrator
+**        LLO, LUO: limiter for output
+** -----------------------------------------------
+.subckt PI-controller y u h r i
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 i 0 100Meg ; Dummy 100-megohm resistor
+B1 tmp 0 V=idt({KI}*V(u)*!(V(h)),if(V(tmp)>={LUI}&inv(V(r)),{LUI},if(V(tmp)<={LLI}&inv(V(r)),{LLI},V(i))),(V(tmp)>={LUI}&V(u)>0)|(V(tmp)<={LLI}&V(u)<0)|buf(V(r))) ; Integrator part, initially zero
+B2 y 0 V=limit(LLO,{KP}*V(u)+V(tmp),LUO);
+.param KP=1 KI=1 LLI=-10 LUI=10 LLO=-10 LUO=10
+.ends
+
+** -----------------------------------------------
+** Limiter
+** Nodes: y:output, u:input
+** Param: LL:lower limit, LU,upper limit
+** -----------------------------------------------
+.subckt limiter y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=limit({LL},V(u),{LU})
+.param LL=-10 LU=10
+.end
+
+** -----------------------------------------------
+** Deadband
+** Nodes: y:output, u:input
+** Param: BL:lower boundary, BU:upper boundary
+** -----------------------------------------------
+.subckt deadband y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=uramp(V(u)-{BU})-uramp(-V(u)+{BL})
+.param BL=-1,BU=1
+.ends

@@ -1,0 +1,640 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Discrete functions
+** contraille-discrete.lib
+** Version 1.000
+** Released under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Edge detection, rising and/or falling
+** Nodes: y:output, u:input
+** Param: R:flag for detection of rising edge, F:flag for detection of falling edge
+** -----------------------------------------------
+.subckt edge-detection y u
+.machine
+.output (u_old) V(u)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 u_old 0 1k ; Dummy 1-kilohm resistor
+B1 y 0 V=(buf(V(u))^buf(V(u_old))&!buf(V(u_old))&buf({R}))|(buf(V(u))^buf(V(u_old))&buf(V(u_old))&buf({F}))
+.param R=1 F=0
+.ends
+
+** -----------------------------------------------
+** Sample and hold
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** -----------------------------------------------
+.subckt sample-and-hold y u clk
+.machine
+.output (u_old) V(u)
+.output (y_old) V(y)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+R3 u_old 0 1k ; Dummy 1-kilohm resistor
+R4 y_old 0 1k ; Dummy 1-kilohm ressistor
+XU1 edge clk edge-detection R=1,F=0
+B1 y 0 V=if(buf(V(edge)),V(u_old),V(y_old))
+.ends
+
+** -----------------------------------------------
+** Sample and hold, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** -----------------------------------------------
+.subckt sample-and-hold-gclock y u
+.global gclk ; Declaring the global node
+.machine
+.output (u_old) V(u)
+.output (y_old) V(y)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 u_old 0 1k ; Dummy 1-kilohm resistor
+R3 y_old 0 1k ; Dummy 1-kilohm ressistor
+XU1 edge gclk edge-detection R=1,F=0
+B1 y 0 V=if(buf(V(edge)),V(u_old),V(y_old))
+.ends
+
+** -----------------------------------------------
+** Unit delay, z**(-1)
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** -----------------------------------------------
+.subckt unit-delay y u clk
+.machine
+.output (u_old) V(u)
+.output (y_old) V(y)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+R3 u_old 0 1k ; Dummy 1-kilohm resistor
+R4 y_old 0 1k ; Dummy 1-kilohm ressistor
+XU1 edge clk edge-detection R=1,F=0
+B1 y 0 V=if(buf(V(edge)),V(u_old),V(y_old))
+.ends
+
+** -----------------------------------------------
+** Unit delay, z**(-1), global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** -----------------------------------------------
+.subckt unit-delay-gclock y u
+.global gclk ; Declaring the global node
+.machine
+.output (u_old) if(buf(V(edge)),V(u),V(u_old))
+.output (y_old) V(y)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 u_old 0 1k ; Dummy 1-kilohm resistor
+R3 y_old 0 1k ; Dummy 1-kilohm ressistor
+XU1 edge gclk edge-detection R=1,F=0
+B1 y 0 V=if(buf(V(edge)),V(u_old),V(y_old)) tripdt=1e300
+.ic V(u_old)=0 V(y_old)=0 V(y)=0
+.ends
+
+** -----------------------------------------------
+** Integral gain, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge, Ts:sampling period
+** -----------------------------------------------
+.subckt integral-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends
+
+** -----------------------------------------------
+** Integral gain, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge, Ts:sampling period
+** -----------------------------------------------
+.subckt integral-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends
+
+** -----------------------------------------------
+** Integral gain, limiters, hold, reset to a value, discrete
+** Nodes: y:output, u:input, h:hold, r:reset, i:initial condition at reset
+**        clk:clock for sampling at its rising edge
+** Param: T:time constant, LU:upper limit, LL:lower limit, Ts:sampling period
+** -----------------------------------------------
+.subckt integral-limiter-hold-reset-discrete y u h r i clk
+.machine
+.state normal 0
+.state over 1
+.state under 2
+.state reset 3
+.rule normal over V(y0)>{LU}
+.rule over normal V(u)<0
+.rule normal under V(y0)<{LL}
+.rule under normal V(u)>0
+.rule * reset buf(V(r))
+.rule reset normal !(V(r))
+.output (over) state>0.5&state<1.5
+.output (under) state>1.5&state<2.5
+.output (reset) state>2.5&state<3.5
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 h 0 100Meg ; Dummy 100-megohm resistor
+R3 r 0 100Meg ; Dummy 100-megohm resistor
+R4 i 0 100Meg ; Dummy 100-megohm resistor
+R5 clk 0 100Meg ; Dummy 100-megohm resistor
+R6 over 0 1k ; Dummy 1-kilohm resistor
+R7 under 0 1k ; Dummy 1-kilohm resistor
+R8 reset 0 1k ; Dummy 1-kilohm resistor
+XU1 t10 t0 clk unit-delay
+B1 t0 0 V=if(V(reset),V(i)/{2*b0},if(V(over),{LU/(2*b0)},if(V(under),{LL/(2*b0)},!(V(h))*V(u)+{a1}*V(t1))))
+B2 t1 0 V=if(V(reset),V(i)/{2*b1},if(V(over),{LU/(2*b1)},if(V(under),{LL/(2*b1)},V(t10))))
+B3 y0 0 V={b0}*V(t0)+{b1}*V(t1)
+B4 y 0 V=limit({LL},V(y0),{LU})
+.param T=1 LU=10 LL=-10 Ts=100u
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends
+
+** -----------------------------------------------
+** Integral gain, limiters, hold, reset to a value, global clock
+** Nodes: y:output, u:input, h:hold, r:reset, i:initial condition at reset
+**        gclk:global clock for sampling at its rising edge
+**        Ts:sampling period
+** -----------------------------------------------
+.subckt integral-limiter-hold-reset-discrete-gclock y u h r i
+.global gclk ; Declaring the global node
+.machine
+.state normal 0
+.state over 1
+.state under 2
+.state reset 3
+.rule normal over V(y0)>{LU}
+.rule over normal V(u)<0
+.rule normal under V(y0)<{LL}
+.rule under normal V(u)>0
+.rule * reset buf(V(r))
+.rule reset normal !(V(r))
+.output (over) state>0.5&state<1.5
+.output (under) state>1.5&state<2.5
+.output (reset) state>2.5&state<3.5
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 h 0 100Meg ; Dummy 100-megohm resistor
+R3 r 0 100Meg ; Dummy 100-megohm resistor
+R4 i 0 100Meg ; Dummy 100-megohm resistor
+R5 clk 0 100Meg ; Dummy 100-megohm resistor
+R6 over 0 1k ; Dummy 1-kilohm resistor
+R7 under 0 1k ; Dummy 1-kilohm resistor
+R8 reset 0 1k ; Dummy 1-kilohm resistor
+XU1 t10 t0 gclk unit-delay
+B1 t0 0 V=if(V(reset),V(i)/{2*b0},if(V(over),{LU/(2*b0)},if(V(under),{LL/(2*b0)},!(V(h))*V(u)+{a1}*V(t1))))
+B2 t1 0 V=if(V(reset),V(i)/{2*b1},if(V(over),{LU/(2*b1)},if(V(under),{LL/(2*b1)},V(t10))))
+B3 y0 0 V={b0}*V(t0)+{b1}*V(t1)
+B4 y 0 V=limit({LL},V(y0),{LU})
+.param T=1 LU=10 LL=-10 Ts=100u
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends
+
+** -----------------------------------------------
+** Derivative gain, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: T:time-constant, Ts:sampling period
+** -----------------------------------------------
+.subckt derivative-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={2*T/Ts} b1={-2*T/Ts} a1=-1
+.ends derivative-discrete
+
+** -----------------------------------------------
+** Derivative gain, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: T:time-constant, Ts:sampling period
+** -----------------------------------------------
+.subckt derivative-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={2*T/Ts} b1={-2*T/Ts} a1=-1
+.ends
+
+** -----------------------------------------------
+** First-order LPF, time-constant, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: T:time constant, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-lpf-time-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={Ts/(Ts+2*T)} b1={Ts/(Ts+2*T)} a1={(2*T-Ts)/(2*T+Ts)}
+.ends
+
+** -----------------------------------------------
+** First-order LPF, time-constant, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: T:time constant, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-lpf-time-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={Ts/(Ts+2*T)} b1={Ts/(Ts+2*T)} a1={(2*T-Ts)/(2*T+Ts)}
+.ends
+
+** -----------------------------------------------
+** First-order LPF, omega_n, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:cutoff angular frequency, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-lpf-omega_n-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param omega_n=1 Ts=100u
+.param b0={omega_n*Ts/(omega_n*Ts+2)} b1={omega_n*Ts/(omega_n*Ts+2)} a1={-(omega_n*Ts-2)/(omega_n*Ts+2)}
+.ends
+
+** -----------------------------------------------
+** First-order LPF, omega_n, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:cutoff angular frequency, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-lpf-omega_n-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param omega_n=1 Ts=100u
+.param b0={omega_n*Ts/(omega_n*Ts+2)} b1={omega_n*Ts/(omega_n*Ts+2)} a1={-(omega_n*Ts-2)/(omega_n*Ts+2)}
+.ends
+
+** -----------------------------------------------
+** First-order HPF, time-constant, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: T:time constant, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-hpf-time-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={2*T/(Ts+2*T)} b1={-2*T/(Ts+2*T)} a1={(2*T-Ts)/(2*T+Ts)}
+.ends
+
+** -----------------------------------------------
+** First-order HPF, time-constant, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: T:time constant, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-hpf-time-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param T=1 Ts=100u
+.param b0={2*T/(Ts+2*T)} b1={-2*T/(Ts+2*T)} a1={(2*T-Ts)/(2*T+Ts)}
+.ends
+
+** -----------------------------------------------
+** First-order HPF, omega_n, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:cutoff angular frequency, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-hpf-omega_n-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param omega_n=1 Ts=100u
+.param b0={2/(omega_n*Ts+2)} b1={-2/(omega_n*Ts+2)} a1={-(omega_n*Ts-2)/(omega_n*Ts+2)}
+.ends
+
+** -----------------------------------------------
+** First-order HPF, omega_n, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:cutoff angular frequency, Ts:sampling period
+** -----------------------------------------------
+.subckt first-order-hpf-omega_n-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param omega_n=1 Ts=100u
+.param b0={2/(omega_n*Ts+2)} b1={-2/(omega_n*Ts+2)} a1={-(omega_n*Ts-2)/(omega_n*Ts+2)}
+.ends
+
+** -----------------------------------------------
+** Second-order LPF, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-lpf-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+XU2 t2 t1 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={1/(1+M+N)} b1={2/(1+M+N)} b2={1/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order LPF, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-lpf-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+XU2 t2 t1 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={1/(1+M+N)} b1={2/(1+M+N)} b2={1/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order HPF, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-hpf-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+XU2 t2 t1 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={N/(1+M+N)} b1={-2*N/(1+M+N)} b2={N/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order HPF, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-hpf-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+XU2 t2 t1 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={N/(1+M+N)} b1={-2*N/(1+M+N)} b2={N/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order BPF, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-bpf-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+XU2 t2 t1 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={M/(1+M+N)} b1=0 b2={-M/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order BPF, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-bpf-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+XU2 t2 t1 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={M/(1+M+N)} b1=0 b2={-M/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order BEF, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-bef-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+XU2 t2 t1 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={(1+N)/(1+M+N)} b1={2*(1-N)/(1+M+N)} b2={(1+N)/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Second-order BEF, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: omega_n:natural angular freuquency, zeta:damping factor, Ts:sampling period
+** -----------------------------------------------
+.subckt second-order-bef-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+XU2 t2 t1 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)+{a2}*V(t2)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)+{b2}*V(t2)
+.param omega_n=1 zeta=0.707 Ts=100u
+.param M={4*zeta/(omega_n*Ts)} N={4/(omega_n**2*Ts**2)}
+.param b0={(1+N)/(1+M+N)} b1={2*(1-N)/(1+M+N)} b2={(1+N)/(1+M+N)}
+.param a1={-2*(1-N)/(1+M+N)} a2={-(1-M+N)/(1+M+N)}
+.ends
+
+** -----------------------------------------------
+** Phase lag compensation, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: alpha:low-frequency gain, T1:frequency parameter, Ts:sampling frequency
+** -----------------------------------------------
+.subckt phase-lag-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param alpha=10 T1=0.1 Ts=100u
+.param b0={alpha*(Ts+2*T1)/(Ts+2*alpha*T1)} b1={alpha*(Ts-2*T1)/(Ts+2*alpha*T1)} a1={-(Ts-2*alpha*T1)/(Ts+2*alpha*T1)}
+.ends
+
+** -----------------------------------------------
+** Phase lag compensation, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: alpha:low-frequency gain, T1:frequency parameter, Ts:sampling frequency
+** -----------------------------------------------
+.subckt phase-lag-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param alpha=10 T1=0.1 Ts=100u
+.param b0={alpha*(Ts+2*T1)/(Ts+2*alpha*T1)} b1={alpha*(Ts-2*T1)/(Ts+2*alpha*T1)} a1={-(Ts-2*alpha*T1)/(Ts+2*alpha*T1)}
+.ends
+
+** -----------------------------------------------
+** Phase lead compensation, discrete
+** Nodes: y:output, u:input, clk:clock for sampling at its rising edge
+** Param: beta:high-frequency gain, T2:frequency parameter
+** -----------------------------------------------
+.subckt phase-lead-discrete y u clk
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 clk 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 clk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param beta=0.1 T2=1 Ts=100u
+.param b0={(Ts+2*T2)/(Ts+2*beta*T2)} b1={(Ts-2*T2)/(Ts+2*beta*T2)} a1={-(Ts-2*beta*T2)/(Ts+2*beta*T2)}
+.ends
+
+** -----------------------------------------------
+** Phase lead compensation, discrete, global clock
+** Nodes: y:output, u:input, gclk:global clock for sampling at its rising edge
+** Param: beta:high-frequency gain, T2:frequency parameter
+** -----------------------------------------------
+.subckt phase-lead-discrete-gclock y u
+.global gclk ; Declaring the global node
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+XU1 t1 t0 gclk unit-delay
+B1 t0 0 V=V(u)+{a1}*V(t1)
+B2 y 0 V={b0}*V(t0)+{b1}*V(t1)
+.param beta=0.1 T2=1 Ts=100u
+.param b0={(Ts+2*T2)/(Ts+2*beta*T2)} b1={(Ts-2*T2)/(Ts+2*beta*T2)} a1={-(Ts-2*beta*T2)/(Ts+2*beta*T2)}
+.ends
+
+** -----------------------------------------------
+** PI controller, limiters, hold, reset to a value, discrete
+** Nodes: y:output, u:input, h:hold, r:reset, i:initial condition at reset
+**        clk:clock for sampling at its rising edge
+** Param: KP:proportinal gain, KI:integral gain,
+**        LLI, LUI: limiter for internal integrator
+**        LLO, LUO: limiter for output
+**        Ts:sampling period
+** -----------------------------------------------
+.subckt PI-controller-discrete y u h r i clk
+.machine
+.state normal 0
+.state over 1
+.state under 2
+.state reset 3
+.rule normal over V(y0)>{LUI}
+.rule over normal V(u)<0
+.rule normal under V(y0)<{LLI}
+.rule under normal V(u)>0
+.rule * reset buf(V(r))
+.rule reset normal !(V(r))
+.output (over) state>0.5&state<1.5
+.output (under) state>1.5&state<2.5
+.output (reset) state>2.5&state<3.5
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 h 0 100Meg ; Dummy 100-megohm resistor
+R3 r 0 100Meg ; Dummy 100-megohm resistor
+R4 i 0 100Meg ; Dummy 100-megohm resistor
+R5 clk 0 100Meg ; Dummy 100-megohm resistor
+R6 over 0 1k ; Dummy 1-kilohm resistor
+R7 under 0 1k ; Dummy 1-kilohm resistor
+R8 reset 0 1k ; Dummy 1-kilohm resistor
+XU1 t10 t0 clk unit-delay
+B1 t0 0 V=if(V(reset),V(i)/{2*b0},if(V(over),{LUI/(2*b0)},if(V(under),{LLI/(2*b0)},!(V(h))*V(u)+{a1}*V(t1))))
+B2 t1 0 V=if(V(reset),V(i)/{2*b1},if(V(over),{LUI/(2*b1)},if(V(under),{LLI/(2*b1)},V(t10))))
+B3 y0 0 V={b0}*V(t0)+{b1}*V(t1)
+B4 y 0 V=limit({LLO},{KP}*V(u)+limit({LLI},V(y0),{LUI}),{LUO})
+.param KP=1 KI=1 LUI=10 LLI=-10 LLO=-10 LUO=10 Ts=100u
+.param T={1/KI}
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends
+
+** -----------------------------------------------
+** PI controller, limiters, hold, reset to a value, discrete, global-clock
+** Nodes: y:output, u:input, h:hold, r:reset, i:initial condition at reset
+**        gclk:global clock for sampling at its rising edge
+** Param: KP:proportinal gain, KI:integral gain,
+**        LLI, LUI: limiter for internal integrator
+**        LLO, LUO: limiter for output
+**        Ts:sampling period
+** -----------------------------------------------
+.subckt PI-controller-discrete-gclock y u h r i
+.global gclk ; Declaring the global node
+.machine
+.state normal 0
+.state over 1
+.state under 2
+.state reset 3
+.rule normal over V(y0)>{LUI}
+.rule over normal V(u)<0
+.rule normal under V(y0)<{LLI}
+.rule under normal V(u)>0
+.rule * reset buf(V(r))
+.rule reset normal !(V(r))
+.output (over) state>0.5&state<1.5
+.output (under) state>1.5&state<2.5
+.output (reset) state>2.5&state<3.5
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 h 0 100Meg ; Dummy 100-megohm resistor
+R3 r 0 100Meg ; Dummy 100-megohm resistor
+R4 i 0 100Meg ; Dummy 100-megohm resistor
+R5 over 0 1k ; Dummy 1-kilohm resistor
+R6 under 0 1k ; Dummy 1-kilohm resistor
+R7 reset 0 1k ; Dummy 1-kilohm resistor
+XU1 t10 t0 gclk unit-delay
+B1 t0 0 V=if(V(reset),V(i)/{2*b0},if(V(over),{LUI/(2*b0)},if(V(under),{LLI/(2*b0)},!(V(h))*V(u)+{a1}*V(t1))))
+B2 t1 0 V=if(V(reset),V(i)/{2*b1},if(V(over),{LUI/(2*b1)},if(V(under),{LLI/(2*b1)},V(t10))))
+B3 y0 0 V={b0}*V(t0)+{b1}*V(t1)
+B4 y 0 V=limit({LLO},{KP}*V(u)+limit({LLI},V(y0),{LUI}),{LUO})
+.param KP=1 KI=1 LUI=10 LLI=-10 LLO=-10 LUO=10 Ts=100u
+.param T={1/KI}
+.param b0={Ts/(2*T)} b1={Ts/(2*T)} a1=1
+.ends

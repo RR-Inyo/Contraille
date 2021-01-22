@@ -1,0 +1,89 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Logic functions
+** contraille-logic.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Buffer, changing the input to Boolean
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt buf y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=buf(V(u))
+.ends
+
+** -----------------------------------------------
+** NOT gate
+** Nodes: y:output, u:input
+** -----------------------------------------------
+.subckt not y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=!V(u)
+.ends
+
+** -----------------------------------------------
+** AND gate, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt and2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)&V(u2)
+.ends
+
+** -----------------------------------------------
+** NAND gate, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt nand2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=!(V(u1)&V(u2))
+.ends
+
+** -----------------------------------------------
+** OR gate, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt or2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)|V(u2)
+.ends
+
+** -----------------------------------------------
+** NOR gate, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt nor2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=!(V(u1)|V(u2))
+.ends
+
+** -----------------------------------------------
+** XOR gate, 2 inputs
+** Nodes: y:output, u1, u2:input
+** -----------------------------------------------
+.subckt xor2 y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=V(u1)^V(u2)
+.ends
+
+** -----------------------------------------------
+** Comparator, true if u1 > u2
+** Nodes: y:output, u1, u2:input
+** Param: h:hysteresis band
+** -----------------------------------------------
+.subckt comparator y u1 u2
+R1 u1 0 100Meg ; Dummy 100-megohm resistor
+R2 u2 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=(V(u1)+{h}*V(y))>(V(u2)+{h}*!V(y))
+.param h=1
+.ends

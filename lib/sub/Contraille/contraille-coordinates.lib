@@ -1,0 +1,137 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Coordinate transforms
+** contraille-coordinates.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Cartesian-to-polar transform
+** Nodes: r:radius output, theta:angle output,
+          x:x-axis input, y:y-axis input
+** -----------------------------------------------
+.subckt cartes-to-polar r theta x y
+R1 x 0 100Meg ; Dummy 100-megohm resistor
+R2 y 0 100Meg ; Dummy 100-megohm resistor
+B1 r 0 V=hypot(V(x), V(y))
+B2 theta 0 V=atan2(V(y), V(x))
+.ends
+
+** -----------------------------------------------
+** Polar-to-Cartesian transform
+** Nodes: x:x-axis output, y:y-axis output,
+          r:radius input, theta:angle input
+** -----------------------------------------------
+.subckt polar-to-cartes r theta x y
+R1 r 0 100Meg ; Dummy 100-megohm resistor
+R2 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 x 0 V=V(r)*cos(V(theta))
+B2 y 0 V=V(r)*sin(V(theta))
+.ends
+
+** -----------------------------------------------
+** ABC-to-zero-alpha-beta transform
+** Nodes: zero, alpha, beta:two-phase output with zero sequency component,
+          a, b, c:three-phase input
+** Param: K:cooefficient
+** -----------------------------------------------
+.subckt abc-to-zero-alpha-beta zero alpha beta a b c
+R1 a 0 100Meg ; Dummy 100-megohm resistor
+R2 b 0 100Meg ; Dummy 100-megohm resistor
+R3 c 0 100Meg ; Dummy 100-megohm resistor
+B1 zero 0 V={K*1/sqrt(2)}*(V(a)+V(b)+V(c)}
+B2 alpha 0 V={K}*(V(a)-V(b)/2-V(c)/2)
+B3 beta 0 V={K*sqrt(3)/2}*(V(b)-V(c))
+.param K={sqrt(2/3)}
+.ends
+
+** -----------------------------------------------
+** ABC-to-alpha-beta transform
+** Nodes: alpha, beta:two-phase output,
+          a, b, c:three-phase input
+** K:cooefficient
+** -----------------------------------------------
+.subckt abc-to-alpha-beta alpha beta a b c
+R1 a 0 100Meg ; Dummy 100-megohm resistor
+R2 b 0 100Meg ; Dummy 100-megohm resistor
+R3 c 0 100Meg ; Dummy 100-megohm resistor
+B2 alpha 0 V={K}*(V(a)-V(b)/2-V(c)/2)
+B3 beta 0 V={K*sqrt(3)/2}*(V(b)-V(c))
+.param K={sqrt(2/3)}
+.ends
+
+** -----------------------------------------------
+** Zero-alpha-beta-to-ABC transform
+** Nodes: a, b, c:three-phase output,
+**        zero, alpha, beta:two-phase input
+** K:cooefficient
+** -----------------------------------------------
+.subckt zero-alpha-beta-to-abc a b c zero alpha beta 
+R1 zero 0 100Meg ; Dummy 100-megohm resistor
+R2 alpha 0 100Meg ; Dummy 100-megohm resistor
+R3 beta 0 100Meg ; Dummy 100-megohm resistor
+B1 a 0 V={K}*(V(zero)/sqrt(2)+V(alpha))
+B2 b 0 V={K}*(V(zero)/sqrt(2)-V(alpha)/2+sqrt(3)/2*V(beta))
+B3 c 0 V={K}*(V(zero)/sqrt(2)-V(alpha)/2-sqrt(3)/2*V(beta))
+.param K={sqrt(2/3)}
+.ends
+
+* -----------------------------------------------
+** Alpha-beta to ABC transform
+** Nodes: a, b, c:three-phase output
+**        zero, alpha, beta:two-phase input with zero sequence component
+** Param: K:cooefficient
+** -----------------------------------------------
+.subckt alpha-beta-to-abc a b c alpha beta 
+R2 alpha 0 100Meg ; Dummy 100-megohm resistor
+R3 beta 0 100Meg ; Dummy 100-megohm resistor
+B1 a 0 V={K}*V(alpha)
+B2 b 0 V={K}*(-V(alpha)/2+sqrt(3)/2*V(beta))
+B3 c 0 V={K}*(-V(alpha)/2-sqrt(3)/2*V(beta))
+.param K={sqrt(2/3)}
+.ends
+
+** -----------------------------------------------
+** Alpha-beta-to-dq transform
+** Nodes: d, q:rotating reference frame output,
+**        alpha, beta:two-phase input,
+**        theta:phase angle
+* -----------------------------------------------
+.subckt alpha-beta-to-dq d q alpha beta theta
+R1 alpha 0 100Meg ; Dummy 100-megohm resistor
+R2 beta 0 100Meg ; Dummy 100-megohm resistor
+R3 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 d 0 V=V(alpha)*cos(V(theta))+V(beta)*sin(V(theta))
+B2 q 0 V=-V(alpha)*sin(V(theta))+V(beta)*cos(V(theta))
+.ends
+
+** -----------------------------------------------
+** Dq-to-alpha-beta transform
+** Nodes: alpha, beta:two-phase output,
+**        d, q:rotating reference frame input,
+**        theta:phase angle
+* -----------------------------------------------
+.subckt dq-to-alpha-beta alpha beta d q theta
+R1 d 0 100Meg ; Dummy 100-megohm resistor
+R2 q 0 100Meg ; Dummy 100-megohm resistor
+R3 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 alpha 0 V=V(d)*cos(V(theta))-V(q)*sin(V(theta))
+B2 beta 0 V=V(d)*sin(V(theta))+V(q)*cos(V(theta))
+.ends
+
+** -----------------------------------------------
+** D-q coupling 
+** Nodes: vdq:d-axis voltage due to q-axis current
+**        vqd:q-axis voltage due to d-axis current
+**        id, iq:detected d- and q-axis currents
+* -----------------------------------------------
+.subckt dq-coupling vdq vqd id iq
+R1 id 0 100Meg ; Dummy 100-megohm resistor
+R2 iq 0 100Meg ; Dummy 100-megohm resistor
+B1 vdq 0 V=V(id)*R*V(id)+omega*L*V(iq)
+B2 vqd 0 V=V(iq)*R*V(iq)-omega*L*V(id)
+.param R=10m L=5m omega={2*pi*50}
+.ends

@@ -1,0 +1,171 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Signal sources
+** contraille-signal-sources.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Signal source unity
+** Nodes: y:output
+** -----------------------------------------------
+.subckt unity y
+V1 y 0 1
+.ends
+
+** -----------------------------------------------
+** Signal source zero
+** Nodes: y:output
+** -----------------------------------------------
+.subckt zero y
+V1 y 0 0
+.ends
+
+** -----------------------------------------------
+** Constant signal source
+** Nodes: y:output
+** Param: u:signal value
+** -----------------------------------------------
+.subckt constant-signal-source y
+V1 y 0 {u}
+.param u=1
+.ends
+
+** -----------------------------------------------
+** Unit step
+** Nodes: y:output
+** Param: T:time to step, u:signal value
+** -----------------------------------------------
+.subckt unit-step y
+V1 y 0 PULSE(0 {u} {T} 1p 1p 1G 2G)
+.param T=1 u=1
+.ends
+
+** -----------------------------------------------
+** Soft step
+** Nodes: y:output
+** Param: T:time to step, Tr:rise time, u: signal value
+** -----------------------------------------------
+.subckt soft-step y
+V1 y 0 PULSE(0 {u} {T} {Tr} 1p 1G 2G)
+.param T=1 Tr=0.1 u=1
+.ends
+
+** -----------------------------------------------
+** Unit ramp
+** Nodes: y:output
+** Param: T:time to step, r:signal value
+** -----------------------------------------------
+.subckt unit-ramp y
+B1 y 0 V=if(time>=T,idt({r},0),0)
+.param T=1 r=1
+.ends
+
+** -----------------------------------------------
+** Sawtooth
+** Nodes: y:output
+** Param: f:frequency, u:amplitude, phi:phase [deg]
+** -----------------------------------------------
+.subckt sawtooth y
+V1 y 0 PULSE(0 {u} {1/f*phi/360} {1/f} 0 0 {1/f})
+.param f=50 u={2*pi} phi=0
+.ends
+
+** -----------------------------------------------
+** Triangle, bipolar
+** Nodes: y:output
+** Param: f:frequency, u:amplitude, phi:phase [deg]
+** -----------------------------------------------
+.subckt triangle-bipolar y
+V1 y 0 PULSE({u} {-u} {1/f*phi/360} {1/f/2} {1/f/2} 0 {1/f})
+.param f=450 u=1 phi=0
+.ends
+
+** -----------------------------------------------
+** Triangle, unipolar
+** Nodes: y:output
+** Param: f:frequency, u: amplitude, phi: phase [deg]
+** -----------------------------------------------
+.subckt triangle-unipolar y
+V1 y 0 PULSE({u} 0 {1/f*phi/360} {1/f/2} {1/f/2} 0 {1/f})
+.param f=450 u=1 phi=0
+.ends
+
+** -----------------------------------------------
+** Controllable sine
+** Nodes: y:output
+** Param: f:frequency, u:amplitude, phi:initial phase angle [deg]
+** -----------------------------------------------
+.subckt sine-controllable y u f phi
+.machine
+.output (theta0_old) V(theta0)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 f 0 100Meg ; Dummy 100-megohm resistor
+R3 phi 0 100Meg ; Dummy 100-megohm resistor
+R4 theta0_old 0 1k ; Dummy 1-kilohm resistor
+B1 theta0 0 V=idt(2*pi*V(f),V(theta0_old)-2*pi,V(theta0_old)>2*pi)+V(phi)/180*pi
+B2 y 0 V=V(u)*sin(V(theta0))
+.ends sine-controllable
+
+** -----------------------------------------------
+** Controllable sine, with theta output
+** Nodes:y:output, f:frequency, u:amplitude, phi:initial phase angle [deg], theta:phase angle [deg]
+** -----------------------------------------------
+.subckt sine-controllable-theta y u f phi theta
+.machine
+.output (theta0_old) V(theta0)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 f 0 100Meg ; Dummy 100-megohm resistor
+R3 phi 0 100Meg ; Dummy 100-megohm resistor
+R4 theta0_old 0 1k ; Dummy 1-kilohm resistor
+B1 theta0 0 V=idt(2*pi*V(f),if(V(theta0_old)>2*pi,V(theta0_old)-2*pi,0),V(theta0_old)>2*pi)
+B2 theta 0 V=if(V(theta0)+V(phi)/180*pi>2*pi,V(theta0)/pi*180+V(phi)-360,if(V(theta0)+V(phi)/180*pi<0,V(theta0)/pi*180+V(phi)+360,V(theta0)/pi*180+V(phi)))
+B3 y 0 V=V(u)*sin(V(theta0)+V(phi)/180*pi)
+.ends sine-controllable-theta
+
+** -----------------------------------------------
+** Controllable cosine
+** Nodes: y:output, f:frequency, u:amplitude, phi:initial phase angle [deg]
+** -----------------------------------------------
+.subckt cosine-controllable y u f phi
+.machine
+.output (theta0_old) V(theta0)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 f 0 100Meg ; Dummy 100-megohm resistor
+R3 phi 0 100Meg ; Dummy 100-megohm resistor
+R4 theta0_old 0 1k ; Dummy 1-kilohm resistor
+B1 theta0 0 V=idt(2*pi*V(f),V(theta0_old)-2*pi,V(theta0_old)>2*pi)+V(phi)/180*pi
+B2 y 0 V=V(u)*cos(V(theta0))
+.ends cosine-controllable
+
+** -----------------------------------------------
+** Controllable cosine, with theta output
+** Nodes: y:output, f:frequency, u:amplitude, phi:initial phase angle [deg], theta:phase angle [deg]
+** -----------------------------------------------
+.subckt cosine-controllable-theta y u f phi theta
+.machine
+.output (theta0_old) V(theta0)
+.endmachine
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+R2 f 0 100Meg ; Dummy 100-megohm resistor
+R3 phi 0 100Meg ; Dummy 100-megohm resistor
+R4 theta0_old 0 1k ; Dummy 1-kilohm resistor
+B1 theta0 0 V=idt(2*pi*V(f),if(V(theta0_old)>2*pi,V(theta0_old)-2*pi,0),V(theta0_old)>2*pi)
+B2 theta 0 V=if(V(theta0)+V(phi)/180*pi>2*pi,V(theta0)/pi*180+V(phi)-360,if(V(theta0)+V(phi)/180*pi<0,V(theta0)/pi*180+V(phi)+360,V(theta0)/pi*180+V(phi)))
+B3 y 0 V=V(u)*cos(V(theta0)+V(phi)/180*pi)
+.ends cosine-controllable-theta
+
+** -----------------------------------------------
+** Pulse with a fixed duty cycle
+** Nodes: y: output, f: frequency, d: duty, phi: initial phase angle [deg]
+** -----------------------------------------------
+.subckt pulse-fixed-duty y
+V1 y 0 PULSE(0 1 {1/f*phi/360} {1u/f} {1u/f} {d/f-1p} {1/f})
+.param f=1k phi=0 d=0.5
+.ends pulse-fixed-duty

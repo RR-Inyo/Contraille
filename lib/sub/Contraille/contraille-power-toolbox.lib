@@ -1,0 +1,198 @@
+﻿** -------------------------------------------------------------------
+** Contraille, a Signal and Control Library for LTspice XVII
+** (c) 2021 @RR_Inyo / S. I.
+** Power toolbox
+** contraille-power-toolbox.lib
+** Version 1.000
+** Reliesed under the MIT Lisense
+** https://opensource.org/licenses/mit-license.php
+** -------------------------------------------------------------------
+
+** -----------------------------------------------
+** Circuit breaker control, single-phase
+** Nodes: brk:output, cmd:original input, cur:sensed current input
+** -----------------------------------------------
+.subckt brk-control brk cmd i
+.machine
+.output (i_old) V(i)
+.output (brk_old) V(brk)
+.endmachine
+R1 cmd 0 100Meg ; Dummy 100-megohm resistor
+R2 i_old 0 1k ; Dummy 1-kilohm resistor
+R3 brk_old 0 1k ; Dummy 1-kilohm resistor
+B1 brk 0 V=if(buf(V(cmd)),1,if((buf(V(brk_old))&abs(sgn(V(i))-sgn(V(i_old)))>0.5)|!V(brk_old),0,1))
+.ends
+
+** -----------------------------------------------
+** Circuit breaker control, three-phase
+** Nodes: brk_a-brk_c:outputs, cmd_a-cmd_c:original input commands, cur_a-cur_c:sensed current inputs
+** -----------------------------------------------
+.subckt brk-control-3ph BRKA BRKB BRKC CMDA CMDB CMDC Ia Ib Ic
+.machine
+.output (Ia_old) V(Ia)
+.output (Ib_old) V(Ib)
+.output (Ic_old) V(Ic)
+.output (BRKA_old) V(BRKA)
+.output (BRKB_old) V(BRKB)
+.output (BRKC_old) V(BRKC)
+.endmachine
+R1 CMDA 0 100Meg ; Dummy 100-megohm resistor
+R2 CMDB 0 100Meg ; Dummy 100-megohm resistor
+R3 CMDC 0 100Meg ; Dummy 100-megohm resistor
+R4 Ia_old 0 1k ; Dummy 1-kilohm resistor
+R5 Ib_old 0 1k ; Dummy 1-kilohm resistor
+R6 Ic_old 0 1k ; Dummy 1-kilohm resistor
+R7 BRKA_old 0 1k ; Dummy 1-kilohm resistor
+R8 BRKB_old 0 1k ; Dummy 1-kilohm resistor
+R9 BRKC_old 0 1k ; Dummy 1-kilohm resistor
+B1 BRKA 0 V=if(buf(V(CMDA)),1,if((buf(V(BRKA_old))&abs(sgn(V(Ia))-sgn(V(Ia_old)))>0.5)|!V(BRKA_old),0,1))
+B2 BRKB 0 V=if(buf(V(CMDB)),1,if((buf(V(BRKB_old))&abs(sgn(V(Ib))-sgn(V(Ib_old)))>0.5)|!V(BRKB_old),0,1))
+B3 BRKC 0 V=if(buf(V(CMDC)),1,if((buf(V(BRKC_old))&abs(sgn(V(Ic))-sgn(V(Ic_old)))>0.5)|!V(BRKC_old),0,1))
+.ends
+
+** -----------------------------------------------
+** Three-phase switch, as a breaker
+** Nodes:A1, B1, C1:inlets, A2, B2, C2:outlets, cmda-cmdc:original inputs
+** Param: Ron:on-state resistance, Roff:off-state resistance
+** -----------------------------------------------
+.subckt breaker-3ph A1 B1 C1 A2 B2 C2 CMDA CMDB CMDC
+.model SW SW(Vt=0.5 Ron={Ron} Roff={Roff})
+S1 A1 A2 BRKA 0 SW
+S2 B1 B2 BRKB 0 SW
+S3 C1 C2 BRKC 0 SW
+B1 Ia 0 V=I(S1)
+B2 Ib 0 V=I(S2)
+B3 Ic 0 V=I(S3)
+XU1 BRKA BRKB BRKC CMDA CMDB CMDC Ia Ib Ic brk-control-3ph
+.param Ron=0.1m Roff=10Meg
+.ends
+
+** -----------------------------------------------
+** Ideal current transducer
+** Nodes: a:upsteam/inlet nodes, b:downstream/outlet nodes, i:sensed current output
+** -----------------------------------------------
+.subckt current-transducer a b i
+R1 a b 1u ; Dummy 1-microhm resistor
+B1 i 0 V=I(R1)
+.ends
+
+** -----------------------------------------------
+** Ideal current transducer, three-phase
+** Nodes: a, b, c:upsteam/inlets, u, v, w:downstream/outlet nodes, ia, ib, ic:sensed current outputs
+** -----------------------------------------------
+.subckt current-transducer-3ph a b c u v w ia ib ic
+R1 a u 1u ; Dummy 1-microhm resistor
+R2 b v 1u ; Dummy 1-microhm resistor
+R3 c w 1u ; Dummy 1-microhm resistor
+B1 ia 0 V=I(R1)
+B2 ib 0 V=I(R2)
+B3 ic 0 V=I(R3)
+.ends
+
+** -----------------------------------------------
+** Ideal voltage transducer
+** Nodes: v:measurement output signal, p, n:two measuring points
+** -----------------------------------------------
+.subckt voltage-transducer v p n
+R1 p n 100Meg ; Dummy 100-megohm resistor
+B1 v 0 V=V(p,n)
+.ends
+
+** -----------------------------------------------
+** Instantaneous active and reactive powers, three-phase
+** Nodes: a, b, c: upsteam/inlets, u, v, w: downstream/outlets,
+          p, q: instantenous active and reactive powers
+** -----------------------------------------------
+.subckt instantaneous-pq-3ph a b c u v w p q
+R1 a u 1u ; Dummy 1-microhm resistor
+R2 b v 1u ; Dummy 1-microhm resistor
+R3 c w 1u ; Dummy 1-microhm resistor
+B1 p 0 V=V(a)*I(R1)+V(b)*I(R2)+V(c)*I(R3)
+B2 q 0 V=(V(a,b)*I(R3)+V(b,c)*I(R1)+V(c,a)*I(R2))/sqrt(3)
+.ends
+
+** -----------------------------------------------
+** Dead-time (on-delay)
+** Nodes: y:output, u:input
+** Param: Td:dead time
+** -----------------------------------------------
+.subckt deadtime y u
+R1 u 0 100Meg ; Dummy 100-megohm resistor
+B1 y 0 V=buf(V(u))&delay(buf(V(u)),{Td})
+.param Td=10u
+.ends
+
+** -----------------------------------------------
+** Three-phase voltage source
+** Nodes: A, B, C:phase outputs, N:neutral
+** Param: V:line-to-line RMS voltage, f:frequency, phi:initial phase angle
+** -----------------------------------------------
+.subckt voltage-sources-3ph A B C N
+V1 A N SINE(0 {sqrt(2/3)*V} {f} 0 0 {phi})
+V2 B N SINE(0 {sqrt(2/3)*V} {f} 0 0 {phi-120})
+V3 C N SINE(0 {sqrt(2/3)*V} {f} 0 0 {phi+120})
+.param V=6.6k f=50 phi=0
+.ends
+
+** -----------------------------------------------
+** Single-phase transformer, no saturation
+** Nodes: A, B:primary, U, V:secondary
+** Param: Vp_nom:primary-side nominal voltage, Vs_nom:secondary-side nominal voltage,
+**        S_nom:nominal apparent power, f_nom:nominal_frequency,
+**        X_pu:leakage reactance in p.u., R1_pu:primary-side winding resistance in p.u.
+**        R2_pu:secondary-side winding resistance in p.u.
+**        I0_pu:magnetizing current in p.u.
+** -----------------------------------------------
+.subckt transformer-1ph A B U V
+L1 A B {L1} Rser={R1} Cpar=0
+L2 U V {L2} Rser={R2} Cpar=0
+K1 L1 L2 {K}
+.param Vp_nom=6.6k Vs_nom=100 S_nom=20k f_nom=50
+.param X_pu=0.15 R1_pu=0.001 R2_pu=0.001 I0_pu=0.002
+.param Z0_p={Vp_nom**2/S_nom} Z0_s={Vs_nom**2/S_nom} omega_nom={2*pi*f_nom}
+.param L1={Z0_p/I0_pu/omega_nom} L2={L1*(Vs_nom/Vp_nom)**2}
+.param K={sqrt(1-Z0_p*X_pu/(omega_nom*L1))}
+.param R1={Z0_p*R1_pu} R2={Z0_s*R2_pu}
+.ends
+
+** -----------------------------------------------
+** Three-phase transformer, Ynd11, no saturation
+** Nodes: A, B, C:primary, n:neutral, U, V, W:secondary
+** Param: Vp_nom:primary-side nominal voltage, Vs_nom:secondary-side nominal voltage,
+**        S_nom:nominal apparent power, f_nom:nominal_frequency,
+**        X_pu:leakage reactance in p.u., R1_pu:primary-side winding resistance in p.u.
+**        R2_pu:secondary-side winding resistance in p.u.
+**        I0_pu:magnetizing current in p.u.
+** -----------------------------------------------
+.subckt transformer-3ph-Ynd11 A B C n U V W
+XU1 A n U W transformer-1ph Vp_nom={Vp_nom/sqrt(3)} Vs_nom={Vs_nom} S_nom={S_nom/3} f_nom={f_nom} X_pu={X_pu} R1_pu={R1_pu} R2_pu={R2_pu} I0_pu={I0_pu}
+XU2 B n V U transformer-1ph Vp_nom={Vp_nom/sqrt(3)} Vs_nom={Vs_nom} S_nom={S_nom/3} f_nom={f_nom} X_pu={X_pu} R1_pu={R1_pu} R2_pu={R2_pu} I0_pu={I0_pu}
+XU3 C n W V transformer-1ph Vp_nom={Vp_nom/sqrt(3)} Vs_nom={Vs_nom} S_nom={S_nom/3} f_nom={f_nom} X_pu={X_pu} R1_pu={R1_pu} R2_pu={R2_pu} I0_pu={I0_pu}
+.param Vp_nom=275k Vs_nom=66k S_nom=100Meg f_nom=50
+.param X_pu=0.15 R1_pu=0.001 R2_pu=0.001 I0_pu=0.002
+.ends
+
+** -----------------------------------------------
+** Gate driver, with a single gate resistor
+** Nodes: G:gate, E:emitter, in:control pulse (Boolean)
+** Param: VGEon: gate-emitter voltage to turn on,
+**        VGEoff: gate-emitter voltage to turn off,
+**        Rg: gate resistor
+** -----------------------------------------------
+.subckt gate-driver-with-resistor G E in
+R1 in 0 100Meg ; Dummy 100-megohm resistor
+B1 GG E V=if(buf(V(in)),{VGEon},{VGEoff})
+R2 GG G {Rg}
+.param VGEon=15 VGEoff=-15 Rg=10
+.ends
+
+** -----------------------------------------------
+** Hall sensors
+** Nodes: theta_e:electrical angle, H1, H2, H3:pulses from Hall sensors
+** -----------------------------------------------
+.subckt hall-sensors H1 H2 H3 theta_e
+R1 theta 0 100Meg ; Dummy 100-megohm resistor
+B1 H1 0 V=if(V(theta_e)<pi/2|V(theta_e)>3*pi/2,1,0)
+B2 H2 0 V=if(V(theta_e)>pi/6&V(theta_e)<7*pi/6,1,0)
+B3 H3 0 V=if(V(theta_e)>5*pi/6&V(theta_e)<11*pi/6,1,0)
+.ends
